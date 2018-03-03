@@ -14,7 +14,11 @@ def custom_spec():
 class TestAtom:
 
     def test_validate_spec(self, custom_spec):
-        # Should not accept Specs
+        # Should not accept Spec classes or instances
+        with pytest.raises(SpecError):
+            specs.Atom(specs.Atom)
+        with pytest.raises(SpecError):
+            specs.Atom(specs.Map)
         with pytest.raises(SpecError):
             specs.Atom(specs.Atom(int))
         with pytest.raises(SpecError):
@@ -79,3 +83,15 @@ class TestMap:
         # Should fail with non-type, non-Spec values
         with pytest.raises(SpecError):
             specs.Map(self.spec_fields({'name': 'bob'}))
+
+    def test_validate(self):
+        pass
+
+
+class TestSeq:
+
+    def test_validate_spec(self):
+        pass
+
+    def test_validate(self):
+        pass

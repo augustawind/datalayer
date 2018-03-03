@@ -31,7 +31,7 @@ class Spec(abc.ABC):
                 f' got {typename(value)} instead')
         return value
 
-    def validate_spec_or_type(self, value):
+    def _validate_spec_or_type(self, value):
         """Assert the value is a Spec, converting type objects to Atoms."""
         if isinstance(value, type):
             value = Atom(value)
@@ -47,9 +47,10 @@ class Atom(Spec):
         return self.spec
 
     def validate_spec(self, spec: Any) -> Any:
-        if isinstance(spec, Spec):
-            raise SpecError(self, 'cannot be a Spec instance')
-        if not isinstance(spec, type):
+        is_type = type(spec) is type
+        if isinstance(spec, Spec) or is_type and issubclass(spec, Spec):
+            raise SpecError(self, 'cannot be a Spec')
+        if not is_type:
             raise SpecError(
                 self, f'expected a type object, got {typename(spec)}')
         return spec
@@ -63,7 +64,7 @@ class Map(Spec):
         for key, val in spec.items():
             if not isinstance(key, str):
                 raise SpecError(self, 'keys must be strings')
-            spec[key] = self.validate_spec_or_type(val)
+            spec[key] = self._validate_spec_or_type(val)
         return spec
 
     def validate(self, value: Mapping) -> Mapping:
@@ -90,7 +91,7 @@ class Seq(Spec):
     base_type = Sequence
 
     def validate_spec(self, spec: Any) -> Spec:
-        spec = self.validate_spec_or_type(spec)
+        spec = self._validate_spec_or_type(spec)
         return spec
 
     def validate(self, value: Sequence) -> Sequence:
