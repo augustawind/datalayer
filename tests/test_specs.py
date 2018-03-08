@@ -1,7 +1,7 @@
 import pytest
 
 from datalayer import specs
-from datalayer.exceptions import Error, SpecError, ValidationError
+from datalayer.exceptions import SpecError, ValidationError
 
 
 @pytest.fixture()
