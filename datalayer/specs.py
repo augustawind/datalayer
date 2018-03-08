@@ -5,6 +5,10 @@ from datalayer.exceptions import SpecError, ValidationError
 from datalayer.utils import typename
 
 
+class _DEFAULT:
+    """Generic default value for when None doesn't cut it."""
+
+
 class Spec(abc.ABC):
 
     def __init__(self, spec: Any):
@@ -31,14 +35,6 @@ class Spec(abc.ABC):
                 f' got {typename(value)} instead')
         return value
 
-    def _validate_spec_or_type(self, value):
-        """Assert the value is a Spec, converting type objects to Atoms."""
-        if isinstance(value, type):
-            value = Atom(value)
-        elif not isinstance(value, Spec):
-            raise SpecError(self, 'values must be Specs or type objects')
-        return value
-
 
 class Atom(Spec):
 
@@ -56,14 +52,29 @@ class Atom(Spec):
         return spec
 
 
-class Map(Spec):
+class CompoundSpec(Spec, abc.ABC):
+
+    @abc.abstractmethod
+    def get(self, item, default=_DEFAULT):
+        """Get an item from the Spec."""
+
+    def _validate_spec_or_type(self, value):
+        """Assert the value is a Spec, converting type objects to Atoms."""
+        if isinstance(value, type):
+            value = Atom(value)
+        elif not isinstance(value, Spec):
+            raise SpecError(self, 'values must be Specs or type objects')
+        return value
+
+
+class Map(CompoundSpec):
 
     base_type = Mapping
 
     def validate_spec(self, spec: Any) -> Mapping:
         for key, val in spec.items():
             if not isinstance(key, str):
-                raise SpecError(self, 'keys must be strings')
+                raise SpecError(self, 'keys must be str')
             spec[key] = self._validate_spec_or_type(val)
         return spec
 
@@ -85,8 +96,18 @@ class Map(Spec):
 
         return value
 
+    def get(self, item, default=_DEFAULT):
+        if not isinstance(item, str):
+            raise SpecError(self, 'item must be a str')
+        try:
+            return self.spec[item]
+        except KeyError:
+            if default is _DEFAULT:
+                raise SpecError(self, f'key "{item}" not found')
+            return default
 
-class Seq(Spec):
+
+class Seq(CompoundSpec):
 
     base_type = Sequence
 
@@ -98,6 +119,18 @@ class Seq(Spec):
         value = super().validate(value)
         value = self.spec.validate(value)
         return value
+
+    def get(self, item, default=_DEFAULT):
+        try:
+            item = int(item)
+        except ValueError:
+            raise SpecError(self, 'item must be an int')
+        try:
+            return self.spec[item]
+        except IndexError:
+            if default is _DEFAULT:
+                raise SpecError(self, f'index "{item}" out of range')
+            return default
 
 
 example = Map({

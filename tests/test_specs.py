@@ -85,7 +85,30 @@ class TestMap:
             specs.Map(self.spec_fields({'name': 'bob'}))
 
     def test_validate(self):
-        pass
+        spec = specs.Map(self.spec_fields())
+
+        # Should fail if wrong number of items
+        with pytest.raises(ValidationError):
+            spec.validate({'name': 'bob', 'age': 13, 'height': 33.3})
+        with pytest.raises(ValidationError):
+            spec.validate({'name': 'bob', 'age': 13, 'height': 33.3,
+                           'verified': True, 'greeting': 'hello'})
+
+        # Should fail if field not present
+        with pytest.raises(ValidationError):
+            spec.validate({'name': 'bob', 'age': 13, 'height': 33.3,
+                           'greeting': 'hello'})
+
+        # Should fail if field has wrong type
+        with pytest.raises(ValidationError):
+            spec.validate({'name': 'bob', 'age': 13, 'height': 33.3,
+                           'verified': 'yes'})
+
+        # Happy path
+        spec_value = {'name': 'bob', 'age': 13, 'height': 33.3,
+                      'verified': True}
+        value = spec.validate(spec_value)
+        assert value == spec_value
 
 
 class TestSeq:
