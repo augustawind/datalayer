@@ -35,6 +35,17 @@ class Spec(abc.ABC):
                 f' got {typename(value)} instead')
         return value
 
+    def inner(self) -> Any:
+        """Return the inner object wrapped by this Spec."""
+        return self.spec
+
+    def innermost(self) -> Any:
+        """Unwrap inner Specs, returning the first non-Spec."""
+        inner = self.inner()
+        while isinstance(inner, Spec):
+            inner = inner.inner()
+        return inner
+
 
 class Atom(Spec):
 
@@ -52,11 +63,7 @@ class Atom(Spec):
         return spec
 
 
-class CompoundSpec(Spec, abc.ABC):
-
-    @abc.abstractmethod
-    def get(self, item, default=_DEFAULT):
-        """Get an item from the Spec."""
+class CompoundSpec(Spec):
 
     def _validate_spec_or_type(self, value):
         """Assert the value is a Spec, converting type objects to Atoms."""
@@ -96,9 +103,13 @@ class Map(CompoundSpec):
 
         return value
 
-    def get(self, item, default=_DEFAULT):
+    def inner(self, item=_DEFAULT, default=_DEFAULT):
+        if item is _DEFAULT:
+            return self.spec
+
         if not isinstance(item, str):
             raise SpecError(self, 'item must be a str')
+
         try:
             return self.spec[item]
         except KeyError:
@@ -119,18 +130,6 @@ class Seq(CompoundSpec):
         value = super().validate(value)
         value = self.spec.validate(value)
         return value
-
-    def get(self, item, default=_DEFAULT):
-        try:
-            item = int(item)
-        except ValueError:
-            raise SpecError(self, 'item must be an int')
-        try:
-            return self.spec[item]
-        except IndexError:
-            if default is _DEFAULT:
-                raise SpecError(self, f'index "{item}" out of range')
-            return default
 
 
 example = Map({

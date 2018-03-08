@@ -110,11 +110,64 @@ class TestMap:
         value = spec.validate(spec_value)
         assert value == spec_value
 
+    def test_inner(self):
+        spec = specs.Map(self.spec_fields())
+
+        # Should fail on non-str lookup
+        with pytest.raises(SpecError):
+            spec.inner(5)
+        with pytest.raises(SpecError):
+            spec.inner(6.6, default='foo')
+
+        # Should fail if item not found, unless default provided
+        with pytest.raises(SpecError):
+            spec.inner('greeting')
+        assert spec.inner('greeting', default=str) is str
+
+        # Should return whole dict if no item provided
+        assert spec.inner() == {
+            'name': specs.Atom(str),
+            'age': specs.Atom(int),
+            'height': specs.Atom(float),
+            'verified': specs.Atom(bool),
+        }
+
+        # Happy path
+        assert spec.inner('age').inner() is int
+        assert spec.inner('name').inner() is str
+
+        # Happy path, nested Specs
+        spec = specs.Map(self.spec_fields({'colors': specs.Seq(str)}))
+        innermost = spec.inner('colors').inner().inner()
+        assert innermost is str
+
+    def test_innermost(self):
+        matrix_spec = specs.Seq(specs.Seq(int))
+        spec_fields = self.spec_fields({
+            'name': str,
+            'matrices': matrix_spec,
+        })
+        spec = specs.Map(spec_fields)
+
+        assert spec.innermost() == spec_fields
+        assert spec.inner('matrices').innermost() is int
+        assert spec.inner('name').innermost() is str
+
 
 class TestSeq:
 
     def test_validate_spec(self):
-        pass
+        # Should convert type values to Specs
+        spec = specs.Seq(str)
+        assert spec.spec == specs.Atom(str)
+        spec = specs.Seq(float)
+        assert spec.spec == specs.Atom(float)
+
+        # Should allow nested Specs
+        kids = specs.Map({'name': str})
+        spec = specs.Seq(kids)
+        assert spec.spec == kids
+        assert spec.spec.spec['name'] == specs.Atom(str)
 
     def test_validate(self):
         pass
