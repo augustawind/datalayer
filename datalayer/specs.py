@@ -1,5 +1,6 @@
 import abc
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from datalayer.exceptions import SpecError, ValidationError
 from datalayer.utils import typename
@@ -128,7 +129,8 @@ class Seq(CompoundSpec):
 
     def validate(self, value: Sequence) -> Sequence:
         value = super().validate(value)
-        value = self.spec.validate(value)
+        cls = type(value)
+        value = cls(self.spec.validate(item) for item in value)
         return value
 
 

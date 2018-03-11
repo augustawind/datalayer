@@ -160,8 +160,8 @@ class TestSeq:
         # Should convert type values to Specs
         spec = specs.Seq(str)
         assert spec.spec == specs.Atom(str)
-        spec = specs.Seq(float)
-        assert spec.spec == specs.Atom(float)
+        spec = specs.Seq(dict)
+        assert spec.spec == specs.Atom(dict)
 
         # Should allow nested Specs
         kids = specs.Map({'name': str})
@@ -170,4 +170,28 @@ class TestSeq:
         assert spec.spec.spec['name'] == specs.Atom(str)
 
     def test_validate(self):
-        pass
+        spec = specs.Seq(int)
+
+        # Should fail on non-sequence type
+        with pytest.raises(ValidationError):
+            spec.validate(5)
+        with pytest.raises(ValidationError):
+            spec.validate({1: 2})
+
+        # Should fail if item type doesn't match
+        with pytest.raises(ValidationError):
+            spec.validate(('foo', 'bar', 'baz'))
+        with pytest.raises(ValidationError):
+            spec.validate([1, 2, 3.3])
+
+        # Happy path
+        value = [1, 2, 3]
+        assert spec.validate(value) == value
+
+        # Should work with nested CompoundSpec
+        spec = specs.Seq(specs.Map({'name': str, 'age': int}))
+        value = [
+            {'name': 'bob', 'age': 33},
+            {'name': 'sue', 'age': 66},
+        ]
+        assert spec.validate(value) == value

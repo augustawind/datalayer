@@ -1,5 +1,6 @@
 def typename(x):
     """Return the class name of a type or object."""
-    if type(x) is not type:
-        x = type(x)
-    return x.__name__
+    try:
+        return x.__name__
+    except AttributeError:
+        return type(x).__name__
