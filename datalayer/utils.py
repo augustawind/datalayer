@@ -1,10 +1,6 @@
 from collections.abc import MutableMapping
 
 
-class _DEFAULT:
-    pass
-
-
 def typename(x):
     """Return the class name of a type or object."""
     try:
@@ -37,19 +33,19 @@ class SubclassDict(MutableMapping):
     def __getitem__(self, item: type):
         self.__validate_key(item)
         min_idx = None
-        best_match = _DEFAULT
+        best_match = None
         mro = item.__mro__
-        for key, value in self.data.items():
+        for key in self.data:
             try:
                 idx = mro.index(key)
             except ValueError:
                 continue
             if min_idx is None or idx < min_idx:
                 min_idx = idx
-                best_match = value
-        if best_match is _DEFAULT:
+                best_match = key
+        if best_match is None:
             raise KeyError(item)
-        return best_match
+        return self.data[best_match]
 
     def __setitem__(self, key: type, value):
         self.__validate_key(key)
