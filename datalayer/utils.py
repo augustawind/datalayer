@@ -1,6 +1,10 @@
 from collections.abc import MutableMapping
 
 
+class _DEFAULT:
+    pass
+
+
 def typename(x):
     """Return the class name of a type or object."""
     try:
@@ -20,8 +24,8 @@ class SubclassDict(MutableMapping):
         self.update(*args, **kwargs)
 
     @staticmethod
-    def __validate_key(key):
-        if type(key) is not type:
+    def __validate_key(key: type):
+        if not isinstance(key, type):
             raise TypeError(f"not a type: {repr(key)}")
 
     def __str__(self):
@@ -30,18 +34,28 @@ class SubclassDict(MutableMapping):
     def __repr__(self):
         return f'{typename(self)}({repr(self.data)})'
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: type):
         self.__validate_key(item)
+        min_idx = None
+        best_match = _DEFAULT
+        mro = item.__mro__
         for key, value in self.data.items():
-            if issubclass(item, key):
-                return value
-        raise KeyError(item)
+            try:
+                idx = mro.index(key)
+            except ValueError:
+                continue
+            if min_idx is None or idx < min_idx:
+                min_idx = idx
+                best_match = value
+        if best_match is _DEFAULT:
+            raise KeyError(item)
+        return best_match
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: type, value):
         self.__validate_key(key)
         self.data[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: type):
         del self.data[key]
 
     def __iter__(self):
@@ -49,3 +63,6 @@ class SubclassDict(MutableMapping):
 
     def __len__(self):
         return len(self.data)
+
+    def copy(self) -> 'SubclassDict':
+        return SubclassDict(self.data)

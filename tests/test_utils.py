@@ -4,42 +4,51 @@ from datalayer import utils
 
 
 @pytest.fixture
-def base_cls():
-    class BaseCls:
+def parent():
+    class Parent:
         pass
-    return BaseCls
+    return Parent
 
 
 @pytest.fixture
-def child_cls1(base_cls):
-    class ChildCls1(base_cls):
+def child1(parent):
+    class Child1(parent):
         pass
-    return ChildCls1
+    return Child1
 
 
 @pytest.fixture
-def child_cls2(child_cls1):
-    class ChildCls2(child_cls1):
+def child2(parent):
+    class Child2(parent):
         pass
-    return ChildCls2
+    return Child2
 
 
-def test_typename(base_cls):
+@pytest.fixture
+def grandchild1(child1):
+    class GrandChild1(child1):
+        pass
+    return GrandChild1
+
+
+def test_typename(parent):
     assert utils.typename(str) == 'str'
     assert utils.typename('foo') == 'str'
-    assert utils.typename(base_cls) == 'BaseCls'
-    assert utils.typename(base_cls()) == 'BaseCls'
+    assert utils.typename(parent) == parent.__name__
+    assert utils.typename(parent()) == parent.__name__
 
 
-def test_subclassdict(base_cls, child_cls1, child_cls2):
+def test_subdict(parent, child1, grandchild1):
     d = utils.SubclassDict({int: 'x', str: 'y'})
     assert d[int] == 'x'
     assert d.get(int) == 'x'
     assert d.get(list) is None
-    d[base_cls] = 3
-    assert d[base_cls] == 3
-    assert d[child_cls1] == 3
-    assert d[child_cls2] == 3
+    d[parent] = 3
+    assert d[parent] == 3
+    assert d[child1] == 3
+    assert d[grandchild1] == 3
+    d[child1] = 5
+    assert d[grandchild1] == 5
 
     with pytest.raises(KeyError):
         _ = d[dict]
