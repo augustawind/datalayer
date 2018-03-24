@@ -146,14 +146,21 @@ class Map(CompoundSpec):
     base_type = Mapping
 
     def validate_spec(self, spec: Any) -> Spec:
-        if not isinstance(spec, Sequence):
+        spec = super().validate_spec(spec)
+        if not (isinstance(spec, Sequence) and len(spec) == 2):
             raise SchemaError.wrong_type(
                 self,
-                expected='Sequence type',
+                expected='sequence with 2 items',
                 actual=f"'{typename(spec)}'")
+
         key_spec, val_spec = spec
         key_spec = self._validate_spec_or_type(key_spec)
         val_spec = self._validate_spec_or_type(val_spec)
+
+        if key_spec.base_type.__hash__ is None:
+            raise SchemaError(
+                self, 'unhashable Spec for key', f"'{typename(key_spec)}'")
+
         return key_spec, val_spec
 
 
