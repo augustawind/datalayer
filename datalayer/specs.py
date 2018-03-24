@@ -1,9 +1,9 @@
 import abc
-from collections.abc import Mapping, Sequence
+from collections.abc import Container, Mapping, Sequence
 from typing import Any
 
 from datalayer.exceptions import SpecError, ValidationError
-from datalayer.utils import typename
+from datalayer.utils import SubclassDict, typename
 
 
 class _DEFAULT:
@@ -55,7 +55,7 @@ class Atom(Spec):
         return self.spec
 
     def validate_spec(self, spec: Any) -> Any:
-        is_type = type(spec) is type
+        is_type = issubclass(type(spec), type)
         if isinstance(spec, Spec) or is_type and issubclass(spec, Spec):
             raise SpecError(self, 'cannot be a Spec')
         if not is_type:
@@ -65,6 +65,8 @@ class Atom(Spec):
 
 
 class CompoundSpec(Spec):
+
+    base_type = Container
 
     def _validate_spec_or_type(self, value):
         """Assert the value is a Spec, converting type objects to Atoms."""
@@ -132,6 +134,18 @@ class Seq(CompoundSpec):
         cls = type(value)
         value = cls(self.spec.validate(item) for item in value)
         return value
+
+
+"""A mapping of Python types to their corresponding Spec classes."""
+TYPE_TO_SPEC = SubclassDict({spec.base_type: spec for spec in (
+    Map,
+    Seq,
+)})
+
+
+def from_python(data: Any) -> Spec:
+    spec_cls = TYPE_TO_SPEC.get(type(data), Atom)
+    return spec_cls(data)
 
 
 example = Map({

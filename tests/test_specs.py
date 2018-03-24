@@ -195,3 +195,7 @@ class TestSeq:
             {'name': 'sue', 'age': 66},
         ]
         assert spec.validate(value) == value
+
+
+def test_from_python():
+    assert type(specs.from_python({'foo': str})) is specs.Map

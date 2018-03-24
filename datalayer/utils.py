@@ -30,22 +30,39 @@ class SubclassDict(MutableMapping):
     def __repr__(self):
         return f'{typename(self)}({repr(self.data)})'
 
-    def __getitem__(self, item: type):
+    def __getitem__(self, item):
         self.__validate_key(item)
-        min_idx = None
-        best_match = None
-        mro = item.__mro__
+
+        # Find all keys that are subclasses of `item`
+        matches = []
         for key in self.data:
-            try:
-                idx = mro.index(key)
-            except ValueError:
-                continue
-            if min_idx is None or idx < min_idx:
-                min_idx = idx
-                best_match = key
-        if best_match is None:
-            raise KeyError(item)
-        return self.data[best_match]
+            if issubclass(item, key):
+                matches.append(key)
+
+        # If only one match, return it
+        if len(matches) == 1:
+            return self.data[matches[0]]
+
+        # If more than one match, find the nearest subclass in the MRO
+        if len(matches) > 1:
+            min_idx = None
+            best_match = None
+            mro = item.__mro__[:-1]
+            for match in matches:
+                if issubclass(item, match):
+                    if best_match is None:
+                        best_match = match
+                    try:
+                        idx = mro.index(match)
+                    except ValueError:
+                        continue
+                    if min_idx is None or idx < min_idx:
+                        min_idx = idx
+                        best_match = match
+            return self.data[best_match]
+
+        # If no matches, raise a KeyError
+        raise KeyError(item)
 
     def __setitem__(self, key: type, value):
         self.__validate_key(key)

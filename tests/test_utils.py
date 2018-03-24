@@ -38,7 +38,7 @@ def test_typename(parent):
     assert utils.typename(parent()) == parent.__name__
 
 
-def test_subdict(parent, child1, grandchild1):
+def test_subclassdict(parent, child1, grandchild1):
     d = utils.SubclassDict({int: 'x', str: 'y'})
     assert d[int] == 'x'
     assert d.get(int) == 'x'
