@@ -2,7 +2,7 @@ import abc
 from collections.abc import Container, Mapping, Sequence
 from typing import Any
 
-from datalayer.exceptions import SpecError, ValidationError
+from datalayer.exceptions import SchemaError, ValidationError
 from datalayer.utils import SubclassDict, typename
 
 
@@ -24,16 +24,18 @@ class Spec(abc.ABC):
         """Python data type this Spec represents."""
 
     def validate_spec(self, spec: Any) -> Any:
-        """Validate the spec, raising a SpecError if invalid."""
+        """Validate the spec, raising a SchemaError if invalid."""
+        if type(spec) is type(self):
+            return spec.spec
         return spec
 
     def validate(self, value: Any) -> Any:
         """Validate the given value, raising a ValidationError if invalid."""
         if not isinstance(value, self.base_type):
-            raise ValidationError(
+            raise ValidationError.wrong_type(
                 self,
-                f'wrong type: expected {typename(self.base_type)},'
-                f' got {typename(value)} instead')
+                expected=f"'{typename(self.base_type)}'",
+                actual=f"'{typename(value)}'")
         return value
 
     def inner(self) -> Any:
@@ -55,17 +57,23 @@ class Atom(Spec):
         return self.spec
 
     def validate_spec(self, spec: Any) -> Any:
+        spec = super().validate_spec(spec)
         is_type = issubclass(type(spec), type)
-        if isinstance(spec, Spec) or is_type and issubclass(spec, Spec):
-            raise SpecError(self, 'cannot be a Spec')
+        if is_type:
+            is_spec = issubclass(spec, Spec)
+        else:
+            is_spec = isinstance(spec, Spec)
+        if is_spec:
+            raise SchemaError(self, 'cannot be a Spec')
         if not is_type:
-            raise SpecError(
-                self, f'expected a type object, got {typename(spec)}')
+            raise SchemaError.wrong_type(
+                self,
+                expected="'type'",
+                actual=f"'{typename(spec)}'")
         return spec
 
 
 class CompoundSpec(Spec):
-
     base_type = Container
 
     def _validate_spec_or_type(self, value):
@@ -73,35 +81,51 @@ class CompoundSpec(Spec):
         if isinstance(value, type):
             value = Atom(value)
         elif not isinstance(value, Spec):
-            raise SpecError(self, 'values must be Specs or type objects')
+            raise SchemaError.wrong_type(
+                self,
+                expected="Spec or type",
+                actual=f"'{typename(value)}'")
         return value
 
 
 class Model(CompoundSpec):
-
     base_type = Mapping
 
     def validate_spec(self, spec: Any) -> Mapping:
+        spec = super().validate_spec(spec)
+        if isinstance(spec, type):
+            raise SchemaError.wrong_type(
+                self,
+                expected='Mapping or object',
+                actual=f"'{typename(spec)}'")
+
+        # If spec isn't a Mapping, grab attrs from its __dict__
+        if not isinstance(spec, Mapping):
+            spec = spec.__dict__
+
+        validated_spec = {}
         for key, val in spec.items():
-            if not isinstance(key, str):
-                raise SpecError(self, 'keys must be str')
-            spec[key] = self._validate_spec_or_type(val)
-        return spec
+            if type(key) is not str:
+                raise SchemaError(self, 'keys must be str')
+            validated_spec[key] = self._validate_spec_or_type(val)
+        return validated_spec
 
     def validate(self, value: Mapping) -> Mapping:
         value = super().validate(value)
         if len(value) > len(self.spec):
             raise ValidationError(
                 self,
-                f'too many items: expected {len(self.spec)}, got {len(value)}')
+                'too many items'
+                f'expected {len(self.spec)}, got {len(value)}')
         if len(value) < len(self.spec):
             raise ValidationError(
                 self,
-                f'too few items: expected {len(self.spec)}, got {len(value)}')
+                'too few items',
+                f'expected {len(self.spec)}, got {len(value)}')
 
         for field, field_spec in self.spec.items():
             if field not in value:
-                raise ValidationError(self, f'field {field} not found')
+                raise ValidationError(self, f"field '{field}' not found")
             value[field] = field_spec.validate(value[field])
 
         return value
@@ -110,19 +134,30 @@ class Model(CompoundSpec):
         if item is _DEFAULT:
             return self.spec
 
-        if not isinstance(item, str):
-            raise SpecError(self, 'item must be a str')
-
         try:
             return self.spec[item]
         except KeyError:
             if default is _DEFAULT:
-                raise SpecError(self, f'key "{item}" not found')
+                raise SchemaError(self, f'key {repr(item)} not found')
             return default
 
 
-class Seq(CompoundSpec):
+class Map(CompoundSpec):
+    base_type = Mapping
 
+    def validate_spec(self, spec: Any) -> Spec:
+        if not isinstance(spec, Sequence):
+            raise SchemaError.wrong_type(
+                self,
+                expected='Sequence type',
+                actual=f"'{typename(spec)}'")
+        key_spec, val_spec = spec
+        key_spec = self._validate_spec_or_type(key_spec)
+        val_spec = self._validate_spec_or_type(val_spec)
+        return key_spec, val_spec
+
+
+class Seq(CompoundSpec):
     base_type = Sequence
 
     def validate_spec(self, spec: Any) -> Spec:
@@ -156,5 +191,6 @@ example = Model({
         'age': int,
         'colors': Seq(str),
         'kids': Atom(list),
-    }))
+    })),
+    'attributes': Map((str, int)),
 })

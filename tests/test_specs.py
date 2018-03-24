@@ -1,7 +1,7 @@
 import pytest
 
 from datalayer import specs
-from datalayer.exceptions import SpecError, ValidationError
+from datalayer.exceptions import SchemaError, ValidationError
 
 
 @pytest.fixture()
@@ -15,19 +15,17 @@ class TestAtom:
 
     def test_validate_spec(self, custom_spec):
         # Should not accept Spec classes or instances
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Atom(specs.Atom)
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Atom(specs.Model)
-        with pytest.raises(SpecError):
-            specs.Atom(specs.Atom(int))
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Atom(custom_spec(5))
 
         # Should not accept non-type values
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Atom(5)
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Atom(True)
 
         # Should accept types
@@ -75,13 +73,13 @@ class TestModel:
         assert spec.spec['kids'].spec['name'] == specs.Atom(str)
 
         # Should fail with non-str keys
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Model(self.spec_fields({1: bool}))
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Model(self.spec_fields({('x', 'y'): str}))
 
         # Should fail with non-type, non-Spec values
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
             specs.Model(self.spec_fields({'name': 'bob'}))
 
     def test_validate(self):
@@ -113,15 +111,12 @@ class TestModel:
     def test_inner(self):
         spec = specs.Model(self.spec_fields())
 
-        # Should fail on non-str lookup
-        with pytest.raises(SpecError):
-            spec.inner(5)
-        with pytest.raises(SpecError):
-            spec.inner(6.6, default='foo')
-
         # Should fail if item not found, unless default provided
-        with pytest.raises(SpecError):
+        with pytest.raises(SchemaError):
+            spec.inner(5)
+        with pytest.raises(SchemaError):
             spec.inner('greeting')
+        spec.inner(6.6, default='foo')
         assert spec.inner('greeting', default=str) is str
 
         # Should return whole dict if no item provided
@@ -149,7 +144,7 @@ class TestModel:
         })
         spec = specs.Model(spec_fields)
 
-        assert spec.innermost() == spec_fields
+        assert spec.innermost() == spec.spec
         assert spec.inner('matrices').innermost() is int
         assert spec.inner('name').innermost() is str
 

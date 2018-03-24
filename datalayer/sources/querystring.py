@@ -2,7 +2,7 @@ from typing import Mapping, List
 
 from datalayer import config
 from datalayer.datastructures import Query
-from datalayer.exceptions import SpecError
+from datalayer.exceptions import SchemaError
 from datalayer.specs import CompoundSpec
 
 
@@ -13,7 +13,7 @@ def parse_url_params(spec: CompoundSpec, url_params: Mapping[str, str]) -> List[
         for part in parts:
             try:
                 sub_spec = spec.get(part)
-            except SpecError:
+            except SchemaError:
                 break
         queries.append(Query(parts, 'eq', sub_spec))
     return queries
