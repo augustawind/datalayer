@@ -65,7 +65,7 @@ def spec_fields(fields=None):
 class TestModel:
 
     def test_validate_spec(self):
-        # Should convert type values to Specs
+        # Should convert type values to Atoms
         spec = specs.Model(spec_fields())
         assert spec.spec['name'] == specs.Atom(str)
         assert spec.spec['height'] == specs.Atom(float)
@@ -140,27 +140,58 @@ class TestModel:
         assert spec.inner('name').inner() is str
 
         # Happy path, nested Specs
-        spec = specs.Model(self.spec_fields({'colors': specs.Seq(str)}))
+        spec = specs.Model(spec_fields({'colors': specs.Seq(str)}))
         innermost = spec.inner('colors').inner().inner()
         assert innermost is str
 
     def test_innermost(self):
         matrix_spec = specs.Seq(specs.Seq(int))
-        spec_fields = self.spec_fields({
+        schema = spec_fields({
             'name': str,
             'matrices': matrix_spec,
         })
-        spec = specs.Model(spec_fields)
+        spec = specs.Model(schema)
 
         assert spec.innermost() == spec.spec
         assert spec.inner('matrices').innermost() is int
         assert spec.inner('name').innermost() is str
 
 
+class TestMap:
+
+    def test_validate_spec(self):
+        # Should convert type values to Atoms
+        spec = specs.Map((str, int))
+        assert spec.spec == (specs.Atom(str), specs.Atom(int))
+        spec = specs.Map([int, dict])
+        assert spec.spec == (specs.Atom(int), specs.Atom(dict))
+
+        # Should allow nested Specs
+        seq_spec = specs.Seq(bool)
+        spec = specs.Map((str, seq_spec))
+        assert spec.spec == (specs.Atom(str), seq_spec)
+        assert spec.spec.key == specs.Atom(str)
+        assert spec.spec.value == seq_spec
+
+        # Should fail on non-sequence specs
+        with pytest.raises(SchemaError):
+            specs.Map(52)
+        with pytest.raises(SchemaError):
+            specs.Map('xo')
+        with pytest.raises(SchemaError):
+            specs.Map({'x': 3, 'y': 6})
+
+        # Should fail on sequences with < or > 2 items
+        with pytest.raises(SchemaError):
+            specs.Map((int, str, bool))
+        with pytest.raises(SchemaError):
+            specs.Map((int,))
+
+
 class TestSeq:
 
     def test_validate_spec(self):
-        # Should convert type values to Specs
+        # Should convert type values to Atoms
         spec = specs.Seq(str)
         assert spec.spec == specs.Atom(str)
         spec = specs.Seq(dict)

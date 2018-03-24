@@ -1,4 +1,5 @@
 import abc
+from collections import namedtuple
 from collections.abc import Container, Mapping, Sequence
 from typing import Any
 
@@ -142,6 +143,7 @@ class Model(CompoundSpec):
 
 class Map(CompoundSpec):
     base_type = Mapping
+    Spec = namedtuple('MapSpec', ('key', 'value'))
 
     def validate_spec(self, spec: Any) -> Spec:
         spec = super().validate_spec(spec)
@@ -159,7 +161,7 @@ class Map(CompoundSpec):
             raise SchemaError(
                 self, 'unhashable Spec for key', f"'{typename(key_spec)}'")
 
-        return key_spec, val_spec
+        return self.Spec(key_spec, val_spec)
 
 
 class Seq(CompoundSpec):
