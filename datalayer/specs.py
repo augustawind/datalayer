@@ -77,7 +77,7 @@ class CompoundSpec(Spec):
         return value
 
 
-class Map(CompoundSpec):
+class Model(CompoundSpec):
 
     base_type = Mapping
 
@@ -138,7 +138,7 @@ class Seq(CompoundSpec):
 
 """A mapping of Python types to their corresponding Spec classes."""
 TYPE_TO_SPEC = SubclassDict({spec.base_type: spec for spec in (
-    Map,
+    Model,
     Seq,
 )})
 
@@ -148,10 +148,10 @@ def from_python(data: Any) -> Spec:
     return spec_cls(data)
 
 
-example = Map({
+example = Model({
     'valid': bool,
     'tally': int,
-    'records': Seq(Map({
+    'records': Seq(Model({
         'name': str,
         'age': int,
         'colors': Seq(str),

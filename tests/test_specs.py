@@ -18,7 +18,7 @@ class TestAtom:
         with pytest.raises(SpecError):
             specs.Atom(specs.Atom)
         with pytest.raises(SpecError):
-            specs.Atom(specs.Map)
+            specs.Atom(specs.Model)
         with pytest.raises(SpecError):
             specs.Atom(specs.Atom(int))
         with pytest.raises(SpecError):
@@ -49,7 +49,7 @@ class TestAtom:
         assert spec.validate(5) == 5
 
 
-class TestMap:
+class TestModel:
 
     @staticmethod
     def spec_fields(fields=None):
@@ -64,28 +64,28 @@ class TestMap:
 
     def test_validate_spec(self):
         # Should convert type values to Specs
-        spec = specs.Map(self.spec_fields())
+        spec = specs.Model(self.spec_fields())
         assert spec.spec['name'] == specs.Atom(str)
         assert spec.spec['height'] == specs.Atom(float)
 
         # Should allow nested Specs
-        kids = specs.Map({'name': str})
-        spec = specs.Map(self.spec_fields({'kids': kids}))
+        kids = specs.Model({'name': str})
+        spec = specs.Model(self.spec_fields({'kids': kids}))
         assert spec.spec['kids'] == kids
         assert spec.spec['kids'].spec['name'] == specs.Atom(str)
 
         # Should fail with non-str keys
         with pytest.raises(SpecError):
-            specs.Map(self.spec_fields({1: bool}))
+            specs.Model(self.spec_fields({1: bool}))
         with pytest.raises(SpecError):
-            specs.Map(self.spec_fields({('x', 'y'): str}))
+            specs.Model(self.spec_fields({('x', 'y'): str}))
 
         # Should fail with non-type, non-Spec values
         with pytest.raises(SpecError):
-            specs.Map(self.spec_fields({'name': 'bob'}))
+            specs.Model(self.spec_fields({'name': 'bob'}))
 
     def test_validate(self):
-        spec = specs.Map(self.spec_fields())
+        spec = specs.Model(self.spec_fields())
 
         # Should fail if wrong number of items
         with pytest.raises(ValidationError):
@@ -111,7 +111,7 @@ class TestMap:
         assert value == spec_value
 
     def test_inner(self):
-        spec = specs.Map(self.spec_fields())
+        spec = specs.Model(self.spec_fields())
 
         # Should fail on non-str lookup
         with pytest.raises(SpecError):
@@ -137,7 +137,7 @@ class TestMap:
         assert spec.inner('name').inner() is str
 
         # Happy path, nested Specs
-        spec = specs.Map(self.spec_fields({'colors': specs.Seq(str)}))
+        spec = specs.Model(self.spec_fields({'colors': specs.Seq(str)}))
         innermost = spec.inner('colors').inner().inner()
         assert innermost is str
 
@@ -147,7 +147,7 @@ class TestMap:
             'name': str,
             'matrices': matrix_spec,
         })
-        spec = specs.Map(spec_fields)
+        spec = specs.Model(spec_fields)
 
         assert spec.innermost() == spec_fields
         assert spec.inner('matrices').innermost() is int
@@ -164,7 +164,7 @@ class TestSeq:
         assert spec.spec == specs.Atom(dict)
 
         # Should allow nested Specs
-        kids = specs.Map({'name': str})
+        kids = specs.Model({'name': str})
         spec = specs.Seq(kids)
         assert spec.spec == kids
         assert spec.spec.spec['name'] == specs.Atom(str)
@@ -189,7 +189,7 @@ class TestSeq:
         assert spec.validate(value) == value
 
         # Should work with nested CompoundSpec
-        spec = specs.Seq(specs.Map({'name': str, 'age': int}))
+        spec = specs.Seq(specs.Model({'name': str, 'age': int}))
         value = [
             {'name': 'bob', 'age': 33},
             {'name': 'sue', 'age': 66},
@@ -198,4 +198,5 @@ class TestSeq:
 
 
 def test_from_python():
-    assert type(specs.from_python({'foo': str})) is specs.Map
+    assert type(specs.from_python({'foo': str})) is specs.Model
+    # assert type(specs.from_python([int])) is specs.Seq
