@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from collections.abc import MutableMapping
 
 
@@ -16,7 +17,7 @@ class SubclassDict(MutableMapping):
     """
 
     def __init__(self, *args, **kwargs):
-        self.data = {}
+        self.data = OrderedDict()
         self.update(*args, **kwargs)
 
     @staticmethod
