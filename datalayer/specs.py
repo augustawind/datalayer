@@ -25,8 +25,6 @@ class Spec(abc.ABC):
 
     def validate_spec(self, spec: Any) -> Any:
         """Validate the spec, raising a SchemaError if invalid."""
-        if type(spec) is type(self):
-            return spec.spec
         return spec
 
     def validate(self, value: Any) -> Any:

@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from datalayer import specs
@@ -19,6 +21,8 @@ class TestAtom:
             specs.Atom(specs.Atom)
         with pytest.raises(SchemaError):
             specs.Atom(specs.Model)
+        with pytest.raises(SchemaError):
+            specs.Atom(specs.Atom(int))
         with pytest.raises(SchemaError):
             specs.Atom(custom_spec(5))
 
@@ -47,43 +51,47 @@ class TestAtom:
         assert spec.validate(5) == 5
 
 
-class TestModel:
+def spec_fields(fields=None):
+    fields = fields or {}
+    return {
+        'name': str,
+        'age': int,
+        'height': specs.Atom(float),
+        'verified': bool,
+        **fields
+    }
 
-    @staticmethod
-    def spec_fields(fields=None):
-        fields = fields or {}
-        return {
-            'name': str,
-            'age': int,
-            'height': specs.Atom(float),
-            'verified': bool,
-            **fields
-        }
+
+class TestModel:
 
     def test_validate_spec(self):
         # Should convert type values to Specs
-        spec = specs.Model(self.spec_fields())
+        spec = specs.Model(spec_fields())
         assert spec.spec['name'] == specs.Atom(str)
         assert spec.spec['height'] == specs.Atom(float)
 
+        # Should accept mappings OR objects
+        spec = specs.Model(SimpleNamespace(**spec_fields()))
+        assert spec == specs.Model(spec_fields())
+
         # Should allow nested Specs
         kids = specs.Model({'name': str})
-        spec = specs.Model(self.spec_fields({'kids': kids}))
+        spec = specs.Model(spec_fields({'kids': kids}))
         assert spec.spec['kids'] == kids
         assert spec.spec['kids'].spec['name'] == specs.Atom(str)
 
         # Should fail with non-str keys
         with pytest.raises(SchemaError):
-            specs.Model(self.spec_fields({1: bool}))
+            specs.Model(spec_fields({1: bool}))
         with pytest.raises(SchemaError):
-            specs.Model(self.spec_fields({('x', 'y'): str}))
+            specs.Model(spec_fields({('x', 'y'): str}))
 
         # Should fail with non-type, non-Spec values
         with pytest.raises(SchemaError):
-            specs.Model(self.spec_fields({'name': 'bob'}))
+            specs.Model(spec_fields({'name': 'bob'}))
 
     def test_validate(self):
-        spec = specs.Model(self.spec_fields())
+        spec = specs.Model(spec_fields())
 
         # Should fail if wrong number of items
         with pytest.raises(ValidationError):
@@ -109,7 +117,7 @@ class TestModel:
         assert value == spec_value
 
     def test_inner(self):
-        spec = specs.Model(self.spec_fields())
+        spec = specs.Model(spec_fields())
 
         # Should fail if item not found, unless default provided
         with pytest.raises(SchemaError):
