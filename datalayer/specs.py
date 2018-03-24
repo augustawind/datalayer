@@ -1,6 +1,6 @@
 import abc
 from collections import namedtuple
-from collections.abc import Container, Mapping, Sequence
+from collections.abc import Container, Mapping, MutableMapping, Sequence
 from typing import Any
 
 from datalayer.exceptions import SchemaError, ValidationError
@@ -56,7 +56,6 @@ class Atom(Spec):
         return self.spec
 
     def validate_spec(self, spec: Any) -> Any:
-        spec = super().validate_spec(spec)
         is_type = issubclass(type(spec), type)
         if is_type:
             is_spec = issubclass(spec, Spec)
@@ -91,7 +90,6 @@ class Model(CompoundSpec):
     base_type = Mapping
 
     def validate_spec(self, spec: Any) -> Mapping:
-        spec = super().validate_spec(spec)
         if isinstance(spec, type):
             raise SchemaError.wrong_type(
                 self,
@@ -109,8 +107,21 @@ class Model(CompoundSpec):
             validated_spec[key] = self._validate_spec_or_type(val)
         return validated_spec
 
-    def validate(self, value: Mapping) -> Mapping:
-        value = super().validate(value)
+    def validate(self, value: object) -> Mapping:
+        try:
+            value = super().validate(value)
+        except ValidationError:
+            if not hasattr(value, '__dict__'):
+                raise ValidationError.wrong_type(
+                    self,
+                    expected='Mapping or object',
+                    actual=f"'{typename(value)}'"
+                )
+            value = value.__dict__
+
+        if not isinstance(value, MutableMapping):
+            value = dict(value)
+
         if len(value) > len(self.spec):
             raise ValidationError(
                 self,
@@ -146,7 +157,6 @@ class Map(CompoundSpec):
     Spec = namedtuple('MapSpec', ('key', 'value'))
 
     def validate_spec(self, spec: Any) -> Spec:
-        spec = super().validate_spec(spec)
         if not (isinstance(spec, Sequence) and len(spec) == 2):
             raise SchemaError.wrong_type(
                 self,

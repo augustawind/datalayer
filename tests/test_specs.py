@@ -110,11 +110,14 @@ class TestModel:
             spec.validate({'name': 'bob', 'age': 13, 'height': 33.3,
                            'verified': 'yes'})
 
-        # Happy path
+        # Should accept mappings
         spec_value = {'name': 'bob', 'age': 13, 'height': 33.3,
                       'verified': True}
-        value = spec.validate(spec_value)
-        assert value == spec_value
+        assert spec.validate(spec_value) == spec_value
+
+        # Should accept objects
+        spec_value_obj = SimpleNamespace(**spec_value)
+        assert spec.validate(spec_value_obj) == spec_value_obj.__dict__
 
     def test_inner(self):
         spec = specs.Model(spec_fields())
@@ -196,6 +199,11 @@ class TestMap:
             specs.Map((dict, float))
         with pytest.raises(SchemaError):
             specs.Map((list, float))
+
+    def test_validate(self):
+        spec = specs.Map((str, float))
+
+        # Should fail on non-mapping, non-object types
 
 
 class TestSeq:
