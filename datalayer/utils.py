@@ -49,16 +49,13 @@ class SubclassDict(MutableMapping):
             best_match = None
             mro = item.__mro__[:-1]
             for match in matches:
-                if issubclass(item, match):
-                    if best_match is None:
-                        best_match = match
-                    try:
-                        idx = mro.index(match)
-                    except ValueError:
-                        continue
-                    if min_idx is None or idx < min_idx:
-                        min_idx = idx
-                        best_match = match
+                try:
+                    idx = mro.index(match)
+                except ValueError:
+                    continue
+                if min_idx is None or idx < min_idx:
+                    min_idx = idx
+                    best_match = match
             return self.data[best_match]
 
         # If no matches, raise a KeyError
