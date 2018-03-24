@@ -172,6 +172,10 @@ class TestMap:
         assert spec.spec == (specs.Atom(str), seq_spec)
         assert spec.spec.key == specs.Atom(str)
         assert spec.spec.value == seq_spec
+        spec = specs.Map((seq_spec, int))
+        assert spec.spec == (seq_spec, specs.Atom(int))
+        assert spec.spec.key == seq_spec
+        assert spec.spec.value == specs.Atom(int)
 
         # Should fail on non-sequence specs
         with pytest.raises(SchemaError):
@@ -186,6 +190,12 @@ class TestMap:
             specs.Map((int, str, bool))
         with pytest.raises(SchemaError):
             specs.Map((int,))
+
+        # Should fail on unhashable keys
+        with pytest.raises(SchemaError):
+            specs.Map((dict, float))
+        with pytest.raises(SchemaError):
+            specs.Map((list, float))
 
 
 class TestSeq:
